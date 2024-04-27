@@ -1,0 +1,169 @@
+// All of this is to parse the input.
+// This is just skeleton code; you can use it or not, as you'd like.
+// The places in (* *) comments are where you need to fill in your own code.
+// You can change the code in any way you'd like; it's just a suggestion. 
+type Xcord = 
+| X of int 
+
+type Ycord =
+| Y of int
+
+type Width =
+| W of int
+
+type Height =
+| H of int
+
+type Screen =
+| Screen of Width * Height
+
+type Rectangle =
+| Window of Xcord * Ycord * Width * Height
+| OpenSpace of Xcord * Ycord * Width * Height
+
+type PartOfCommand =
+| Word of string
+| Integer of int
+| Negative
+| Space
+
+type Command =
+| Open of Xcord * Ycord * Width * Height
+| Close of Xcord * Ycord 
+| Move of Xcord * Ycord * Width * Height
+| Resize of Xcord * Ycord * Width * Height
+| Quit
+
+type List<'a> =
+| EndOfList
+| V of 'a * List<'a>
+
+let stringFold f initial (s : string) =
+  Seq.fold (fun state ch -> f state (string ch)) initial s
+
+let stringReverse = stringFold (fun state item -> item + state) ""
+
+let stringToList =
+    stringReverse
+    >> stringFold (fun state item -> V (item, state)) EndOfList
+
+let listFold f initial =
+    let rec listFold state =
+        function
+        | EndOfList -> state
+        | V (item, rest) -> listFold (f state item) rest
+    listFold initial
+
+let listReverse list =
+    listFold (fun state item -> V (item, state)) EndOfList list
+
+let listMap f list =
+    listReverse list
+    |> listFold (fun state item -> V (f item, state)) EndOfList
+
+let rec removeSpaces =
+  function
+  | EndOfList -> EndOfList
+  | V (Space, rest) -> removeSpaces rest
+  | V (item, rest) -> V (item, removeSpaces rest)
+
+let toPartOfCommand s =
+  if s = " " then
+    Space
+  elif s = "0" then
+    Integer 0
+  elif s = "1" then
+    Integer 1
+  elif s = "2" then
+    Integer 2
+  elif s = "3" then
+    Integer 3
+  elif s = "4" then
+    Integer 4
+  elif s = "5" then
+    Integer 5
+  elif s = "6" then
+    Integer 6
+  elif s = "7" then
+    Integer 7
+  elif s = "8" then
+    Integer 8
+  elif s = "9" then
+    Integer 9
+  elif s = "-" then
+    Negative
+  else
+    Word s
+
+let rec merge =
+    function
+    | EndOfList -> EndOfList
+    | V (Word a, V (Word b, rest)) ->
+        merge (V (Word (a + b), rest))
+    | V (Integer a, V (Integer b, rest)) ->
+        merge (V (Integer (a * 10 + b), rest))
+    | V (Negative, V (Integer a, rest)) ->
+        merge (V (Integer (-a), rest))
+    | V (x, rest) ->
+        V (x, merge rest)
+
+type Maybe<'data> =
+| Just of 'data
+| Nothing
+
+let rec toCommand =
+    function
+    | EndOfList -> Nothing
+    | V (Word "QUIT", EndOfList) ->
+      Just <| Quit
+    | V (Word "CLOSE", V (Integer a, V (Integer b, EndOfList)))  ->
+        Just <| Close (X a, Y b)
+    | V (Word "OPEN", V (Integer a, V (Integer b, V (Integer c, V (Integer d, EndOfList))))) ->
+        Just <| Open (X a, Y b, W c, H d)
+    | V (Word "RESIZE", V (Integer a, V (Integer b, V (Integer c, V (Integer d, EndOfList))))) ->
+        Just <| Resize (X a, Y b, W c, H d)
+    | V (Word "MOVE", V (Integer a, V (Integer b, V (Integer c, V (Integer d, EndOfList))))) ->
+      Just <| Move (X a, Y b, W c, H d)
+    | _ -> Nothing
+
+let parse =
+    stringToList
+    >> listMap toPartOfCommand
+    >> merge
+    >> removeSpaces
+    >> toCommand
+
+let rec readCommand () =
+  System.Console.ReadLine ()
+  |> parse
+  |> (function
+      | Just x -> x
+      | Nothing ->
+          readCommand ()
+     )
+
+let rec windowString windowList =
+  match windowList with
+  | EndOfList -> ""
+  | V (Just Window (x,y,w,h) , rest) ->
+      $"(* string form of the element in the list *)\n" + windowString rest
+
+let windowToString window =
+  
+
+let writeWindows windowList =
+  System.Console.WriteLine (windowString windowList)
+  windowList
+
+// let rec simulate screenWidth screenHeight =
+//   let rec helper windowList =
+//     readCommand ()
+//     |> ( function
+//       | (* some pattern to match your quit command *) ->
+//         ()
+//       | otherCommand ->
+//         processCommand (screenWidth, screenHeight) windowList otherCommand
+//         |> writeWindows
+//         |> helper
+//     )
+//   helper EndOfList
